@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>개인 비서 캘린더</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <div>
+          <p class="eyebrow">Personal Assistant</p>
+          <h1>비서 캘린더</h1>
+        </div>
+
+        <section class="panel">
+          <h2>일정 추가</h2>
+          <form id="task-form" class="task-form">
+            <label>
+              <span>할 일</span>
+              <input id="title" type="text" placeholder="예: 종설 발표 준비" required />
+            </label>
+
+            <label>
+              <span>카테고리</span>
+              <select id="category"></select>
+            </label>
+
+            <div class="form-grid">
+              <label>
+                <span>마감일</span>
+                <input id="due-date" type="date" required />
+              </label>
+              <label>
+                <span>예상 시간</span>
+                <input id="duration" type="number" min="0.5" step="0.5" value="1" required />
+              </label>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                <span>중요도</span>
+                <select id="priority">
+                  <option value="5">매우 높음</option>
+                  <option value="4">높음</option>
+                  <option value="3" selected>보통</option>
+                  <option value="2">낮음</option>
+                  <option value="1">매우 낮음</option>
+                </select>
+              </label>
+              <label>
+                <span>난이도</span>
+                <select id="difficulty">
+                  <option value="5">매우 어려움</option>
+                  <option value="4">어려움</option>
+                  <option value="3" selected>보통</option>
+                  <option value="2">쉬움</option>
+                  <option value="1">매우 쉬움</option>
+                </select>
+              </label>
+            </div>
+
+            <label>
+              <span>메모</span>
+              <textarea id="notes" rows="3" placeholder="필요한 자료, 장소, 준비물"></textarea>
+            </label>
+
+            <button type="submit">추가</button>
+            <button id="cancel-edit" type="button" class="ghost hidden">수정 취소</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h2>작업 시간 설정</h2>
+          <div class="day-rules">
+            <div class="section-title compact">
+              <h3>날짜별 작업 시간</h3>
+              <span>자동 배치 기준</span>
+            </div>
+            <div class="rule-form">
+              <label>
+                <span>날짜</span>
+                <input id="rule-date" type="date" />
+              </label>
+              <div class="form-grid">
+                <label>
+                  <span>시작</span>
+                  <input id="rule-start" type="time" value="17:00" />
+                </label>
+                <label>
+                  <span>종료</span>
+                  <input id="rule-end" type="time" value="22:00" />
+                </label>
+              </div>
+              <label class="single-row">
+                <span>집중 가능 시간</span>
+                <input id="rule-hours" type="number" min="1" max="14" step="0.5" value="4" />
+              </label>
+              <button id="add-rule" type="button" class="ghost">날짜 설정 추가</button>
+            </div>
+            <div id="rule-list" class="rule-list"></div>
+          </div>
+          <button id="schedule-btn" type="button" class="secondary">자동 일정 짜기</button>
+          <div class="progress" aria-live="polite">
+            <div class="progress-top">
+              <span id="progress-label">대기 중</span>
+              <strong id="progress-percent">0%</strong>
+            </div>
+            <div class="progress-bar">
+              <span id="progress-fill"></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>기존 일정</h2>
+          <div class="fixed-form">
+            <label>
+              <span>일정 이름</span>
+              <input id="fixed-title" type="text" placeholder="예: 알바 / 수업 / 약속" />
+            </label>
+            <label>
+              <span>날짜</span>
+              <input id="fixed-date" type="date" />
+            </label>
+            <div class="form-grid">
+              <label>
+                <span>시작</span>
+                <input id="fixed-start" type="time" value="18:00" />
+              </label>
+              <label>
+                <span>종료</span>
+                <input id="fixed-end" type="time" value="22:00" />
+              </label>
+            </div>
+            <button id="add-fixed" type="button" class="ghost">기존 일정 추가</button>
+          </div>
+          <div id="fixed-list" class="fixed-list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>카테고리 관리</h2>
+          <div class="category-form">
+            <label>
+              <span>카테고리 이름</span>
+              <input id="category-name" type="text" placeholder="예: 종설 / 프론트 / 자료조사" />
+            </label>
+            <button id="save-category" type="button" class="ghost">카테고리 추가</button>
+            <button id="cancel-category-edit" type="button" class="ghost hidden">수정 취소</button>
+          </div>
+          <div id="category-list" class="category-list"></div>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p id="today" class="eyebrow"></p>
+            <h2>오늘의 우선순위</h2>
+          </div>
+          <button id="clear-done" class="ghost" type="button">완료 항목 정리</button>
+        </header>
+
+        <section class="assistant-card">
+          <div>
+            <p class="eyebrow">Assistant Brief</p>
+            <h3 id="brief-title">일정을 추가하면 자동으로 순서를 제안합니다.</h3>
+          </div>
+          <p id="brief-body">중요도, 마감일, 예상 시간, 난이도를 함께 보고 오늘 처리할 일을 계산합니다.</p>
+        </section>
+
+        <div class="content-grid">
+          <section class="panel task-panel">
+            <div class="section-title">
+              <h2>할 일 목록</h2>
+              <span id="task-count">0개</span>
+            </div>
+            <div id="task-list" class="task-list"></div>
+          </section>
+
+          <section class="panel schedule-panel">
+            <div class="section-title">
+              <h2>추천 일정</h2>
+              <span>자동 배치</span>
+            </div>
+            <div id="schedule-list" class="schedule-list"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <template id="task-template">
+      <article class="task-item">
+        <label class="check-wrap">
+          <input class="task-done" type="checkbox" />
+          <span></span>
+        </label>
+        <div class="task-main">
+          <div class="task-head">
+            <div class="task-title-row">
+              <span class="category-badge"></span>
+              <h3></h3>
+            </div>
+            <div class="task-actions">
+              <button class="edit-btn" type="button" aria-label="수정">수정</button>
+              <button class="delete-btn" type="button" aria-label="삭제">×</button>
+            </div>
+          </div>
+          <p class="task-meta"></p>
+          <p class="task-notes"></p>
+        </div>
+      </article>
+    </template>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
