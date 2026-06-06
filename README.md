@@ -24,7 +24,7 @@
 
 ## 실행 방법
 ### URL
-1. https://soomim1004.github.io/schedule-planner/를 URL 입력창에 입력한다
+1. https://soomim1004.github.io/schedule-planner/ 를 URL 입력창에 입력한다
 
 
 ### 컴퓨터
