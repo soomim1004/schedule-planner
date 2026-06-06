@@ -606,8 +606,8 @@ function buildSchedule() {
   let cursorMinutes = availability.startMinutes;
   let usedToday = 0;
 
-  activeTasks.forEach((task, index) => {
-    let remaining = task.duration * 60;
+  activeTasks.forEach((task) => {
+    let remaining = getPlannedTaskMinutes(task.duration);
 
     while (remaining > 0) {
       availability = getAvailability(cursorDate);
@@ -633,14 +633,14 @@ function buildSchedule() {
       }
 
       const workBudget = Math.min(remaining, availability.maxMinutes - usedToday);
-      const block = getWorkThatFits(available, workBudget);
+      const block = Math.min(available, workBudget);
 
       if (block <= 0) {
         cursorMinutes = availableUntil;
         continue;
       }
 
-      const workEnd = cursorMinutes + getElapsedForWork(block);
+      const workEnd = cursorMinutes + block;
       schedule.push({
         type: "task",
         task,
@@ -652,46 +652,20 @@ function buildSchedule() {
       cursorMinutes = workEnd;
       usedToday += block;
       remaining -= block;
-
-      const hasMoreWork = remaining > 0 || index < activeTasks.length - 1;
-      const needsBreakBeforeNext = block % POMODORO_WORK_MINUTES === 0 && block >= POMODORO_WORK_MINUTES;
-      const canAddBreak = needsBreakBeforeNext && workEnd + POMODORO_BREAK_MINUTES <= availableUntil;
-
-      if (hasMoreWork && canAddBreak) {
-        cursorMinutes = workEnd + POMODORO_BREAK_MINUTES;
-      } else if (hasMoreWork && needsBreakBeforeNext) {
-        cursorMinutes = endLimit;
-      }
     }
   });
 
   return schedule;
 }
 
-function getWorkThatFits(availableMinutes, workBudget) {
-  let low = 0;
-  let high = Math.floor(workBudget);
+function getPlannedTaskMinutes(durationHours) {
+  const minutes = Math.round(durationHours * 60);
 
-  while (low < high) {
-    const middle = Math.ceil((low + high) / 2);
-
-    if (getElapsedForWork(middle) <= availableMinutes) {
-      low = middle;
-    } else {
-      high = middle - 1;
-    }
+  if (minutes < 60) {
+    return minutes;
   }
 
-  return low;
-}
-
-function getElapsedForWork(workMinutes) {
-  if (workMinutes <= POMODORO_WORK_MINUTES) {
-    return workMinutes;
-  }
-
-  const hiddenBreaks = Math.floor((workMinutes - 1) / POMODORO_WORK_MINUTES);
-  return workMinutes + hiddenBreaks * POMODORO_BREAK_MINUTES;
+  return Math.max(POMODORO_WORK_MINUTES, minutes - POMODORO_BREAK_MINUTES);
 }
 
 function getBusyBlocks(date) {
