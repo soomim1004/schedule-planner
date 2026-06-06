@@ -93,6 +93,10 @@ form.addEventListener("submit", (event) => {
 cancelEditBtn.addEventListener("click", resetTaskForm);
 saveCategoryBtn.addEventListener("click", saveCategoryFromInput);
 cancelCategoryEditBtn.addEventListener("click", resetCategoryForm);
+setupEnterNavigation(form);
+setupEnterNavigation(document.querySelector(".rule-form"));
+setupEnterNavigation(document.querySelector(".fixed-form"));
+setupEnterNavigation(document.querySelector(".category-form"));
 
 scheduleBtn.addEventListener("click", runScheduler);
 
@@ -163,6 +167,39 @@ addFixedBtn.addEventListener("click", () => {
 
 function getValue(selector) {
   return document.querySelector(selector).value.trim();
+}
+
+function setupEnterNavigation(container) {
+  container.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.shiftKey) {
+      return;
+    }
+
+    const target = event.target;
+
+    if (!target.matches("input, select, textarea")) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const fields = [...container.querySelectorAll("input, select, textarea, button")].filter(
+      (field) => !field.disabled && !field.classList.contains("hidden") && field.offsetParent !== null
+    );
+    const currentIndex = fields.indexOf(target);
+    const nextField = fields[currentIndex + 1];
+
+    if (!nextField) {
+      return;
+    }
+
+    if (nextField.tagName === "BUTTON") {
+      nextField.click();
+      return;
+    }
+
+    nextField.focus();
+  });
 }
 
 function loadTasks() {
