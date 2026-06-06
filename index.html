@@ -8,11 +8,17 @@
   </head>
   <body>
     <main class="app-shell">
+      <header class="brand-header">
+        <p class="eyebrow">Personal Assistant</p>
+        <h1>비서 캘린더</h1>
+      </header>
       <aside class="sidebar">
-        <div>
+        <div class="sidebar-brand">
           <p class="eyebrow">Personal Assistant</p>
           <h1>비서 캘린더</h1>
         </div>
+
+        <p class="sidebar-section-label">관리</p>
 
         <section class="panel">
           <h2>일정 추가</h2>
@@ -99,7 +105,8 @@
               </label>
               <button id="add-rule" type="button" class="ghost">날짜 설정 추가</button>
             </div>
-            <div id="rule-list" class="rule-list"></div>
+            <button id="rule-list-toggle" type="button" class="list-toggle" aria-expanded="false">추가된 설정 0개</button>
+            <div id="rule-list" class="rule-list hidden"></div>
           </div>
           <button id="schedule-btn" type="button" class="secondary">자동 일정 짜기</button>
           <div class="progress" aria-live="polite">
@@ -134,9 +141,14 @@
                 <input id="fixed-end" type="time" value="22:00" />
               </label>
             </div>
+            <label>
+              <span>메모</span>
+              <textarea id="fixed-notes" rows="2" placeholder="장소, 준비물, 참고사항"></textarea>
+            </label>
             <button id="add-fixed" type="button" class="ghost">기존 일정 추가</button>
           </div>
-          <div id="fixed-list" class="fixed-list"></div>
+          <button id="fixed-list-toggle" type="button" class="list-toggle" aria-expanded="false">추가된 일정 0개</button>
+          <div id="fixed-list" class="fixed-list hidden"></div>
         </section>
 
         <section class="panel">
@@ -184,7 +196,12 @@
               <h2>추천 일정</h2>
               <span>자동 배치</span>
             </div>
+            <div class="schedule-view-toggle" role="tablist" aria-label="추천 일정 보기 방식">
+              <button id="list-view-btn" type="button" class="active" aria-selected="true">목록</button>
+              <button id="calendar-view-btn" type="button" aria-selected="false">캘린더</button>
+            </div>
             <div id="schedule-list" class="schedule-list"></div>
+            <div id="calendar-view" class="calendar-view hidden"></div>
           </section>
         </div>
       </section>

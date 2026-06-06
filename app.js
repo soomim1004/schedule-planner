@@ -13,11 +13,16 @@ const submitBtn = form.querySelector("button[type='submit']");
 const cancelEditBtn = document.querySelector("#cancel-edit");
 const taskList = document.querySelector("#task-list");
 const scheduleList = document.querySelector("#schedule-list");
+const calendarView = document.querySelector("#calendar-view");
+const listViewBtn = document.querySelector("#list-view-btn");
+const calendarViewBtn = document.querySelector("#calendar-view-btn");
 const taskTemplate = document.querySelector("#task-template");
 const scheduleBtn = document.querySelector("#schedule-btn");
 const clearDoneBtn = document.querySelector("#clear-done");
 const addRuleBtn = document.querySelector("#add-rule");
 const addFixedBtn = document.querySelector("#add-fixed");
+const ruleListToggle = document.querySelector("#rule-list-toggle");
+const fixedListToggle = document.querySelector("#fixed-list-toggle");
 const taskCount = document.querySelector("#task-count");
 const progressLabel = document.querySelector("#progress-label");
 const progressPercent = document.querySelector("#progress-percent");
@@ -39,6 +44,7 @@ let categories = loadCategories();
 let fixedEvents = loadFixedEvents();
 let editingTaskId = null;
 let editingCategoryName = null;
+let currentSchedule = [];
 
 const formatter = new Intl.DateTimeFormat("ko-KR", {
   month: "long",
@@ -99,6 +105,10 @@ setupEnterNavigation(document.querySelector(".fixed-form"));
 setupEnterNavigation(document.querySelector(".category-form"));
 
 scheduleBtn.addEventListener("click", runScheduler);
+listViewBtn.addEventListener("click", () => setScheduleView("list"));
+calendarViewBtn.addEventListener("click", () => setScheduleView("calendar"));
+ruleListToggle.addEventListener("click", () => toggleManagedList(ruleListToggle, ruleList));
+fixedListToggle.addEventListener("click", () => toggleManagedList(fixedListToggle, fixedList));
 
 clearDoneBtn.addEventListener("click", () => {
   tasks = tasks.filter((task) => !task.done);
@@ -137,6 +147,7 @@ addFixedBtn.addEventListener("click", () => {
   const date = getValue("#fixed-date");
   const start = getValue("#fixed-start");
   const end = getValue("#fixed-end");
+  const notes = getValue("#fixed-notes");
 
   if (!date || !start || !end) {
     setProgress(0, "기존 일정 날짜와 시간을 입력하세요", 0);
@@ -156,6 +167,7 @@ addFixedBtn.addEventListener("click", () => {
       date,
       start,
       end,
+      notes,
       createdAt: new Date().toISOString(),
     },
   ];
@@ -271,6 +283,7 @@ function render() {
 function renderFixedEvents() {
   fixedList.innerHTML = "";
   const events = [...fixedEvents].sort((a, b) => `${a.date}${a.start}`.localeCompare(`${b.date}${b.start}`));
+  fixedListToggle.textContent = `추가된 일정 ${events.length}개`;
 
   if (!events.length) {
     const empty = document.createElement("div");
@@ -287,6 +300,7 @@ function renderFixedEvents() {
       <div>
         <strong>${escapeHtml(event.title)}</strong>
         <span>${escapeHtml(event.date)} · ${escapeHtml(event.start)} - ${escapeHtml(event.end)}</span>
+        ${event.notes ? `<p>${escapeHtml(event.notes)}</p>` : ""}
       </div>
       <button type="button" aria-label="기존 일정 삭제">×</button>
     `;
@@ -302,6 +316,7 @@ function renderFixedEvents() {
 
 function renderDayRules() {
   const rules = Object.values(dayRules).sort((a, b) => a.date.localeCompare(b.date));
+  ruleListToggle.textContent = `추가된 설정 ${rules.length}개`;
   ruleList.innerHTML = "";
 
   if (!rules.length) {
@@ -332,6 +347,12 @@ function renderDayRules() {
     });
     ruleList.append(item);
   });
+}
+
+function toggleManagedList(button, list) {
+  const isOpen = !list.classList.contains("hidden");
+  list.classList.toggle("hidden", isOpen);
+  button.setAttribute("aria-expanded", String(!isOpen));
 }
 
 function renderCategories() {
@@ -440,6 +461,7 @@ function resetFixedForm() {
   document.querySelector("#fixed-date").valueAsDate = new Date();
   document.querySelector("#fixed-start").value = "18:00";
   document.querySelector("#fixed-end").value = "22:00";
+  document.querySelector("#fixed-notes").value = "";
 }
 
 function uniqueCategories(source) {
@@ -583,8 +605,9 @@ async function runScheduler(animated = true) {
       await setProgress(90, "추천 순서 정리 중");
     }
 
-    const schedule = buildSchedule();
-    renderSchedule(schedule);
+    currentSchedule = buildSchedule();
+    renderSchedule(currentSchedule);
+    renderCalendar(currentSchedule);
     if (!animated) {
       setProgress(0, "대기 중", 0);
       return;
@@ -606,7 +629,7 @@ function buildSchedule() {
   let cursorMinutes = availability.startMinutes;
   let usedToday = 0;
 
-  activeTasks.forEach((task) => {
+  activeTasks.forEach((task, index) => {
     let remaining = getPlannedTaskMinutes(task.duration);
 
     while (remaining > 0) {
@@ -652,6 +675,12 @@ function buildSchedule() {
       cursorMinutes = workEnd;
       usedToday += block;
       remaining -= block;
+
+      const hasMoreWork = remaining > 0 || index < activeTasks.length - 1;
+
+      if (hasMoreWork) {
+        cursorMinutes = workEnd + POMODORO_BREAK_MINUTES <= availableUntil ? workEnd + POMODORO_BREAK_MINUTES : endLimit;
+      }
     }
   });
 
@@ -755,6 +784,134 @@ function renderSchedule(schedule) {
     day.append(body);
     scheduleList.append(day);
   });
+}
+
+function renderCalendar(schedule) {
+  calendarView.innerHTML = "";
+
+  if (!schedule.length) {
+    calendarView.append(emptyState("캘린더에 표시할 일정이 없습니다."));
+    return;
+  }
+
+  const grouped = groupByDate(schedule);
+  const dates = Object.values(grouped).map((slots) => slots[0].date);
+  const baseDate = new Date(Math.min(...dates.map((date) => date.getTime())));
+  const year = baseDate.getFullYear();
+  const month = baseDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const cells = [];
+
+  for (let index = 0; index < firstDay.getDay(); index += 1) {
+    cells.push(null);
+  }
+
+  for (let day = 1; day <= lastDay.getDate(); day += 1) {
+    cells.push(new Date(year, month, day));
+  }
+
+  const monthView = document.createElement("section");
+  monthView.className = "month-calendar";
+
+  const heading = document.createElement("div");
+  heading.className = "month-calendar-head";
+  heading.innerHTML = `
+    <h3>${year}년 ${month + 1}월</h3>
+    <span>${schedule.length}개 추천 일정</span>
+  `;
+  monthView.append(heading);
+
+  const weekdays = document.createElement("div");
+  weekdays.className = "month-weekdays";
+  ["일", "월", "화", "수", "목", "금", "토"].forEach((weekday) => {
+    const item = document.createElement("span");
+    item.textContent = weekday;
+    weekdays.append(item);
+  });
+  monthView.append(weekdays);
+
+  const grid = document.createElement("div");
+  grid.className = "month-grid";
+
+  cells.forEach((date) => {
+    const cell = document.createElement("article");
+    cell.className = "month-cell";
+
+    if (!date) {
+      cell.classList.add("empty-cell");
+      grid.append(cell);
+      return;
+    }
+
+    const key = toDateKey(date);
+    const slots = grouped[key] ?? [];
+    const fixedCount = fixedEvents.filter((event) => event.date === key).length;
+    const isToday = key === toDateKey(new Date());
+    cell.classList.toggle("today-cell", isToday);
+    cell.tabIndex = 0;
+    cell.setAttribute("role", "button");
+    cell.setAttribute("aria-label", `${key} 기존 일정 날짜로 선택`);
+    cell.addEventListener("click", () => selectFixedDate(key));
+    cell.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectFixedDate(key);
+      }
+    });
+
+    const dayNumber = document.createElement("strong");
+    dayNumber.innerHTML = `<span>${date.getDate()}</span>`;
+    cell.append(dayNumber);
+
+    if (fixedCount > 0) {
+      const fixedIndicator = document.createElement("span");
+      fixedIndicator.className = "fixed-indicator";
+      fixedIndicator.textContent = `기존 일정 ${fixedCount}개`;
+      fixedIndicator.setAttribute("aria-label", `기존 일정 ${fixedCount}개 있음`);
+      cell.append(fixedIndicator);
+    }
+
+    slots.slice(0, 3).forEach((slot) => {
+      const event = document.createElement("div");
+      event.className = "month-event";
+      event.textContent = `${formatTime(slot.start)} ${slot.task.title}`;
+      cell.append(event);
+    });
+
+    if (slots.length > 3) {
+      const more = document.createElement("span");
+      more.className = "month-more";
+      more.textContent = `+${slots.length - 3}개`;
+      cell.append(more);
+    }
+
+    grid.append(cell);
+  });
+
+  monthView.append(grid);
+  calendarView.append(monthView);
+}
+
+function setScheduleView(view) {
+  const isCalendar = view === "calendar";
+  scheduleList.classList.toggle("hidden", isCalendar);
+  calendarView.classList.toggle("hidden", !isCalendar);
+  listViewBtn.classList.toggle("active", !isCalendar);
+  calendarViewBtn.classList.toggle("active", isCalendar);
+  listViewBtn.setAttribute("aria-selected", String(!isCalendar));
+  calendarViewBtn.setAttribute("aria-selected", String(isCalendar));
+
+  if (isCalendar && !calendarView.children.length) {
+    renderCalendar(currentSchedule);
+  }
+}
+
+function selectFixedDate(dateKey) {
+  document.querySelector("#fixed-date").value = dateKey;
+  document.querySelector("#fixed-title").focus();
+  document.querySelector("#fixed-title").scrollIntoView({ behavior: "smooth", block: "center" });
+  setProgress(0, `${dateKey} 기존 일정 입력`, 0);
 }
 
 function groupByDate(schedule) {
