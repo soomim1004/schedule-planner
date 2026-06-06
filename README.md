@@ -23,7 +23,11 @@
 별도의 프레임워크나 빌드 도구 없이 동작하는 정적 웹앱입니다.
 
 ## 실행 방법
+### URL
+1. https://soomim1004.github.io/schedule-planner/를 URL 입력창에 입력한다
 
+
+### 컴퓨터
 1. 저장소를 내려받습니다.
 
 ```bash
